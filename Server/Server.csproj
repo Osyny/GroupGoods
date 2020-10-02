@@ -71,6 +71,7 @@
     <Compile Include="ShipmentGoods.cs">
       <DependentUpon>Model.tt</DependentUpon>
     </Compile>
+    <Compile Include="ViewModel.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

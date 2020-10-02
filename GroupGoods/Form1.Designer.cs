@@ -110,6 +110,7 @@
             this.checkBoxDate.TabIndex = 1;
             this.checkBoxDate.Text = "Group";
             this.checkBoxDate.UseVisualStyleBackColor = true;
+            this.checkBoxDate.CheckedChanged += new System.EventHandler(this.checkBoxDate_CheckedChanged);
             // 
             // buttonShowAll
             // 

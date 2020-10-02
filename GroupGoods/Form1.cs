@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Server;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -14,19 +15,20 @@ namespace GroupGoods
     {
 
         public Logic logic = Logic.getInstance();
-       // List<ShipmentData> tmpGoods = new List<ShipmentData>();
+        List<ShipmentGoods>  selectGoods = new List<ShipmentGoods>();
         public Form1()
         {
             InitializeComponent();
+            selectGoods = logic.GetGoods();
 
             updateGoods();
         }
 
         public void updateGoods()
         {
-            var goods = logic.GetGoods();
+           
             dataGridViewGoods.Rows.Clear();
-            foreach (var good in goods)
+            foreach (var good in selectGoods)
             {
                 var index = dataGridViewGoods.Rows.Add(good.date);
 
@@ -48,6 +50,20 @@ namespace GroupGoods
         private void buttonShowAll_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void checkBoxDate_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkBoxDate.Checked)
+            {
+               selectGoods = logic.groupData();
+            }
+            else
+            {
+                selectGoods = logic.GetGoods();
+            }
+           
+            updateGoods();
         }
     }
 }

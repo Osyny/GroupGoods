@@ -9,7 +9,7 @@ namespace GroupGoods
 {
     public class Logic
     {
-        ServerLogic serverLogoc;
+        ServerLogic serverLogic;
 
         static private Logic instance = null;
         public static Logic getInstance()
@@ -22,12 +22,17 @@ namespace GroupGoods
 
         public Logic()
         {
-            serverLogoc = new ServerLogic();
+            serverLogic = new ServerLogic();
         }
 
         public List<ShipmentGoods> GetGoods()
         {
-            var res = serverLogoc.GetGoods();
+            var res = serverLogic.GetGoods();
+            return res;
+        }
+        public List<ShipmentGoods> groupData()
+        {
+            var res = serverLogic.groupData();
             return res;
         }
     }
