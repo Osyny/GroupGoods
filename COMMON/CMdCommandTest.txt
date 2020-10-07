@@ -1,0 +1,891 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Kias3Database;
+using Kias3Database.Cases;
+using Kias3Database.Clients;
+using Kias3Database.DefaultData;
+using Kias3Database.Repository;
+using Kias3Web.Models;
+using Kias3Web.Models.Case;
+using Kias3Web.Models.Case.CaseLoadModels;
+using Kias3Web.Models.Client;
+using Kias3Web.Modules.FilterPaginationTable;
+using Kias3Web.Services.PaginatedTableLoaderService.PaginatedTableLoaderModels;
+using KiasDefaultData.DefaultData;
+using Kias3SharedFiltersApi.Helper;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
+using static Kias3Web.Models.Case.CaseLoadModels.CaseLoadModels;
+using static Kias3Web.Models.Case.CaseLoadModels.ClientLoadModels;
+using KiasFormatters.Helpers.PhoneFormatters;
+using KiasFormatters.Helpers.DateFormatters;
+
+namespace Kias3Web.Services
+{
+    public class ClientPaginatedTableLoader /*: IDisposable*/
+    {
+        //private List<Guid> filteredByQueryCaseIds;
+        //private IQueryable<Case> cases;
+        private PaginatedTableQueryPayload<ClientAdvancedTableSearchViewModel> query;
+        //private List<FreeAidOrderInCase> selectedFreeAidOrders;
+        //private List<ClientInCase> targetClients;
+        //private List<LawyerInCase> lawyerList;
+        //private List<CaseStateInCase> caseStateList;
+        //private List<EmployeeInCase> employeeList;
+        private CaseRepository caseRepo;
+        private PhoneRepository phoneRepo;
+        private ClientDocumentRepository clientDocRepo;
+        private ContactInformationRepository contactInformationRepo;
+        private ClientRepository clientRepo;
+        private LawyerRepository lawyerRepo;
+        private EmployeeRepository employeeRepo;
+        private CaseStateRepository caseStateRepo;
+        private HttpContext httpContext;
+        private ProcessFreeAidOrderDocumentRepository freeAidRepo;
+        private CenterRepository centerRepo;
+        private int count;
+        private List<Guid> clientIds = new List<Guid>();
+        private Kias3DbContext dbContext { get; set; }
+        public List<Guid> filteredClientIds { get; private set; }
+        public List<Guid> filteredProcessAidDocsIds { get; private set; }
+        private bool disposedValue = false; // To detect redundant calls
+        public Guid id;
+        private IQueryable<Guid> registrationNumberIds;
+        private IQueryable<Client> clients;
+        private DbHelperService dbHelperService;
+        private List<Guid> clientsIdByQuery;
+        private List<PhoneInClient> phones;
+        private List<DocumentInClient> clientActiveDocuments;
+        private List<DocumentInClient> clientIdDocuments;
+
+        public ClientPaginatedTableLoader()
+        {
+        }
+
+        private void FilterByQuery()
+        {
+            //        var c1 = clients.Include(client => client.ClientDocuments)
+            //.Where(client => client.ClientDocuments
+            //    .Count(c => c.Number.ToLower().Contains(query.Q.ToLower())) > 0);
+            //        var c2 = clients.Where(u =>
+            //            u.Surname.ToLower().Contains(query.Q.ToLower()) ||
+            //            u.FirstName.ToLower().Contains(query.Q.ToLower()) ||
+            //            u.FatherName.ToLower().Contains(query.Q.ToLower())
+            //            );
+            //        var c3 = clients.Include(client => client.ContactInformation).ThenInclude(information => information.Phones)
+            //            .Where(client => client.ContactInformation.Phones
+            //                .Count(document => document.PhoneNumber.ToLower().Contains(query.Q.ToLower())) > 0);
+            //        clients = c1.Union(c2).Union(c3);
+
+            this.clientsIdByQuery = new List<Guid>();
+
+            var clientIDs = new List<Guid>();
+            string queryNormalized = query.Q.ToLower().Trim();
+
+
+            var c1 = new CMdCommandTest().Init(this.dbContext.Database.GetDbConnection()).Open();
+
+            c1.PerformCmd(CommonCMdFac.ClientsIdByNameILike(queryNormalized));
+            c1.GetRecords((val) => clientIDs.Add((Guid)val.GetValue(0)));
+
+            c1.PerformCmd(CommonCMdFac.ClientsIdByNameILike(queryNormalized));
+            c1.GetRecords((val) => clientIDs.Add((Guid)val.GetValue(0)));
+
+            c1.PerformCmd(CommonCMdFac.ClientsIdByNameFullMatch(queryNormalized));
+            c1.GetRecords((val) => clientIDs.Add((Guid)val.GetValue(0)));
+
+            c1.Close();
+
+            var IdsByClientDocument = this.clientDocRepo.GetAllNoTracking()
+                .Where(doc => doc.Number.ToLower().Contains(queryNormalized))
+                .Select(doc => doc.ClientId).ToListAsync();
+            this.clientsIdByQuery = this.clientsIdByQuery.Concat(clientIDs).Concat(IdsByClientDocument.Result).ToList();
+        }
+
+        public ClientPaginatedTableLoader Init(PaginatedTableQueryPayload<ClientAdvancedTableSearchViewModel> query,
+            Kias3DbContext dbContext, HttpContext httpContext, DbHelperService dbHelperService)
+        {
+            this.id = Guid.NewGuid();
+            this.httpContext = httpContext;
+            this.query = query;
+            this.dbContext = dbContext;
+            this.dbHelperService = dbHelperService;
+            return this;
+        }
+
+        private PaginatedTableLoaderResult Work()
+        {
+            this.count = 0;
+            this.caseRepo = new CaseRepository(dbContext);
+            this.clientRepo = new ClientRepository(dbContext);
+            this.lawyerRepo = new LawyerRepository(dbContext);
+            this.employeeRepo = new EmployeeRepository(dbContext);
+            this.caseStateRepo = new CaseStateRepository(dbContext);
+            this.freeAidRepo = new ProcessFreeAidOrderDocumentRepository(dbContext);
+            this.centerRepo = new CenterRepository(dbContext);
+            this.phoneRepo = new PhoneRepository(dbContext);
+            this.clientDocRepo = new ClientDocumentRepository(dbContext);
+            this.contactInformationRepo = new ContactInformationRepository(dbContext);
+
+            //this.cases = caseRepo.GetAllNoTracking()
+            //        .Where(c => c.RegistrationNumber != null);
+
+            //this.clients = new List<ClientTableRowViewModel>();
+            var clientRepo = new ClientRepository(dbContext);
+            this.clients = clientRepo.GetAllNoTracking();
+            this.clients = this.clients.Where(client => client.RegistrationNumber != null && !client.IsDeleted && client.ParentId == null);
+
+            bool isAnySearch = false;
+
+            if (!string.IsNullOrEmpty(query.Q))
+            {
+                isAnySearch = true;
+                this.FilterByQuery();
+            }
+
+            if (this.clientsIdByQuery != null)
+            {
+                this.clients = this.clients.Where(cl => this.clientsIdByQuery.Contains(cl.Id));
+            }
+
+
+            if (query.Payload != null)
+            {
+                isAnySearch = true;
+                this.Filter();
+            }
+
+            //cases = cases.Include(c => c.CaseState);
+
+            if (query.SortList != null)
+            {
+                this.Sort();
+            }
+            else
+            {
+                //clients = clients.OrderBy(c => c.Surname);
+                clients = clients.OrderBy(c => c.RegisteredEvent);
+            }
+
+
+            //var mergedCaseIdsAND = new List<Guid>();
+            //if (this.filteredProcessAidDocsIds != null)
+            //{
+            //    mergedCaseIdsAND = mergedCaseIdsAND.Concat(this.filteredProcessAidDocsIds).ToList();
+            //}
+
+            //if (this.registrationNumberIds != null)
+            //{
+            //    mergedCaseIdsAND = mergedCaseIdsAND.Concat(this.registrationNumberIds).ToList();
+            //}
+
+
+            //if (this.filteredProcessAidDocsIds != null || this.filteredClientIds != null)
+            //{
+            //    if (this.filteredProcessAidDocsIds != null && this.filteredClientIds != null)
+            //    {
+            //        cases = cases.Where(cas => mergedCaseIdsAND.Contains(cas.Id) || this.filteredClientIds.Contains(cas.ClientId));
+            //    }
+            //    else if (this.filteredProcessAidDocsIds != null)
+            //    {
+            //        cases = cases.Where(cas => mergedCaseIdsAND.Contains(cas.Id));
+            //    }
+            //    else if (this.filteredClientIds != null)
+            //    {
+            //        cases = cases.Where(cas => this.filteredClientIds.Contains(cas.ClientId));
+            //    }
+            //}
+
+            if (isAnySearch)
+            {
+                // Если поиски есть, берем точное значение
+                this.count = clients.Count();
+            }
+            else
+            {
+                this.count = this.GetEstimateCount();
+            }
+
+            //var clientsForPageTake = clients;
+            //var paginatedIds = clientsForPageTake
+            //    /*.OrderByDescending(c => c.RegisteredEvent)*/
+            //    .Skip(query.Page * query.RecordsOnPage)
+            //    .Take(query.RecordsOnPage)
+            //    .Select(y => y.Id);
+
+            //this.clientIds.AddRange(paginatedIds);
+
+            //clients = clients.Where(x => this.clientIds.Contains(x.Id));
+            //clients = clients.Where(x => paginatedIds.Contains(x.Id));
+
+            var paginatedIds = clients
+                /*.OrderByDescending(c => c.RegisteredEvent)*/
+                .Select(y => y.Id)
+                .Skip(query.Page * query.RecordsOnPage)
+                .Take(query.RecordsOnPage);
+
+            //var cases1 = cases;
+            this.clientIds.AddRange(paginatedIds);
+            clients = clients.Where(x => this.clientIds.Contains(x.Id));
+
+
+            //var selectedClientIds = clients.Select(cas => cas.Id).ToList();
+            //var selectedClientIds = this.clientIds;
+            var selectedClientContactIds = clients.Select(cas => cas.ContactInformationId);
+
+            List<ClientInCaseWithParent> clientWithParents = clientRepo.GetAllNoTracking()
+                .Where(cl => this.clientIds.Contains(cl.ParentId.Value))
+                .Select(cl => new ClientInCaseWithParent()
+                {
+                    ParentId = cl.Id,
+                    ParentFullName = cl.FullName
+                }).ToList();
+
+            var clientWithParentInCasesIds = clientWithParents.Select(cl => cl.ParentId).ToList();
+            var clientWithoutParentIds = this.clientIds.Except(clientWithParentInCasesIds).ToList();
+
+            Task<List<DocumentInClient>> clientActiveDocumentsTask = this.clientDocRepo.GetAllNoTracking()
+                .Include(doc => doc.ClientDocumentType)
+                .Where(doc => this.clientIds.Contains(doc.ClientId)
+                     && doc.IsActive == true)
+                .Select(doc => new DocumentInClient()
+                {
+                    ClientId = doc.ClientId,
+                    Number = $"{doc.Series} {doc.Number}"
+                }).ToListAsync();
+
+            Task<List<DocumentInClient>> clientIdDocumentTask = this.clientDocRepo.GetAllNoTracking()
+                .Include(doc => doc.ClientDocumentType)
+                .Where(doc => this.clientIds.Contains(doc.ClientId)
+                && doc.ClientDocumentType.Id == ClientDocumentTypesDefault.ClientID)
+                .Select(doc => new DocumentInClient()
+                {
+                    ClientId = doc.ClientId,
+                    Number = $"{doc.Series} {doc.Number}"
+                }).ToListAsync();
+
+            var phonesTask = this.contactInformationRepo.GetAllNoTracking()
+                .Include(cont => cont.Phones)
+                .Where(cont => selectedClientContactIds.Contains(cont.Id))
+                .Select(cont => new PhoneInClient()
+                {
+                    ContactInfoId = cont.Id,
+                    Number = cont.Phones.FirstOrDefault(ph => ph.IsActive) != null ?
+                        cont.Phones.FirstOrDefault(ph => ph.IsActive).PhoneNumber : ""
+                });
+
+
+            // поиск по номеру телефона
+            //if (!string.IsNullOrEmpty(query.Q))
+            //{
+            //    var contactInfoByPhoneTask = this.phoneRepo.GetAll()
+            //        .Where(phone => phone.PhoneNumber.Contains(query.Q))
+            //        .Select(phone => phone.ContactInformationId);
+            //    var contInfoIds = contactInfoByPhoneTask.Result;
+            //}
+
+            this.clientActiveDocuments = clientActiveDocumentsTask.Result;
+            this.clientIdDocuments = clientIdDocumentTask.Result;
+
+
+
+
+            this.phones = phonesTask.ToList();
+
+            //var contactInformationIdsTask = this.contactInformationRepo.GetAll()
+            //    .Where(cont => selectedClientContactIds.Contains(cont.Id))
+            //    .Select(cont => cont.Id);
+
+            //var phoneIdsTask = this.phoneRepo.GetAll()
+            //    .Where(phone => selectedClientContactIds.Contains(phone.ContactInformationId))
+            //    .Select(phone => phone.Id);
+
+
+            //var actPhone = ci.Phones.FirstOrDefault(p => p.IsActive);
+
+            //if (actPhone == null)
+            //{
+            //    actPhone = ci.Phones.FirstOrDefault();
+            //}
+
+            //if (actPhone == null)
+            //{
+            //    return "-";
+            //}
+            ////var ph = $"+{actPhone.Country?.PhoneCode}{actPhone?.PhoneNumber}";
+            //var ph = $"+{actPhone.Country?.PhoneCode}{actPhone?.PhoneNumber}";
+            //ph = ph.TrimStart("+".ToCharArray()).Insert(0, "+");//toDO лишние +
+            //return ph;
+
+
+
+            //this.selectedFreeAidOrders = freeAidRepo.GetAllNoTracking()
+            //    .Include(order => order.Employee)
+            //    .Include(order => order.Lawyer)
+            //    .Where(order => selectedCaseIds.Contains(order.CaseId))
+            //    .Select(order => new FreeAidOrderInCase()
+            //    {
+            //        CaseId = order.CaseId,
+            //        EventDate = order.EventDate,
+            //        EmployeeId = order.EmployeeId,
+            //        LawyerId = order.LawyerId,
+            //    }).ToList();
+
+            //var employeeIds = this.selectedFreeAidOrders.Where(order => order.EmployeeId != null).Select(order => order.EmployeeId);
+            //var lawyerIds = this.selectedFreeAidOrders.Where(order => order.LawyerId != null).Select(order => order.LawyerId);
+
+            //this.lawyerList = lawyerRepo.GetAllNoTracking().Where(law => lawyerIds.Contains(law.Id))
+            //    .Select(law => new LawyerInCase()
+            //    {
+            //        LawyerId = law.Id,
+            //        FullName = law.FullName
+            //    }).ToList();
+
+            //this.employeeList = employeeRepo.GetAllNoTracking()
+            //    .Where(em => employeeIds.Contains(em.Id)).Select(em => new EmployeeInCase()
+            //    {
+            //        EmployeeId = em.Id,
+            //        FullName = em.FullName
+            //    }).ToList();
+
+            //this.targetClients = clientRepo.GetAllNoTracking()
+            //    .Include(cl => cl.Parent)
+            //    .Where(cl => selectedClientIds.Contains(cl.Id))
+            //    .Select(cl => new ClientInCase()
+            //    {
+            //        Id = cl.Id,
+            //        FullName = cl.Parent == null ? cl.FullName : cl.Parent.FullName,
+            //    }).ToList();
+
+
+            //this.caseStateList = caseStateRepo.GetAllNoTracking()
+            //    .Where(casState => this.caseIds.Contains(casState.CaseId))
+            //    .Select(cl => new CaseStateInCase()
+            //    {
+            //        CaseStateId = cl.Id,
+            //        StateName = cl.Name,
+            //    }).ToList();
+
+            //var clientInCases = clientRepo.GetAllNoTracking().Where(cl => selectedClientIds.Contains(cl.Id));
+
+            return new PaginatedTableLoaderResult()
+            {
+                Id = this.id,
+                ImmediateResult = null,
+                State = null
+            };
+        }
+
+
+
+        public void Sort()
+        {
+            if (query.SortList.ContainsKey("FullName"))
+            {
+                if (query.SortList["FullName"].IsDesc)
+                {
+                    clients = clients.OrderByDescending(c => c.Surname);
+                }
+                else
+                {
+                    clients = clients.OrderBy(c => c.Surname);
+                }
+            }
+
+            if (query.SortList.ContainsKey(nameof(ClientAdvancedTableSearchViewModel.Birthday)))
+            {
+                if (query.SortList[nameof(ClientAdvancedTableSearchViewModel.Birthday)].IsDesc)
+                {
+                    clients = clients.OrderByDescending(c => c.Birthday);
+                }
+                else
+                {
+                    clients = clients.OrderBy(c => c.Birthday);
+                }
+            }
+        }
+
+
+        public void Filter()
+        {
+            var filter = new Filter();
+
+            // -------------- Current center ---------------------------
+            //var user = this.httpContext.User.Identity.Name;
+            //var accountUserRepo = new AccountUserRepository(this.dbContext);
+            //var currentUser = accountUserRepo.GetAllNoTracking().FirstOrDefault(a => a.UserName == user);
+
+            var curentCenterId = this.employeeRepo.GetCenterId(this.httpContext.User.Identity.Name);
+
+            if (query.Payload?.Filter != null)
+            {
+
+
+                //var filtername = query.Payload?.Filter.FilterType;
+                //switch (filtername)
+                //{
+                //    case "CasesInAll":
+                //        cases = filter.GetCasesWaitSolutionInAll(cases, curentCenter);
+                //        break;
+                //    case "RedirectToAnotherCenter":
+                //        cases = filter.GetCasesRedirectToAnotherCenter(cases, curentCenter);
+                //        break;
+                //    case "NotSetLawyer":
+                //        cases = filter.GetCasesNoSetLawyer(cases, curentCenter);
+                //        break;
+                //    case "NoMessagesClient":
+                //        cases = filter.GetCasesNoMessagesClient(cases, curentCenter);
+                //        break;
+                //}
+            }
+
+            if (query.Payload != null)
+            {
+                var birthdayParseRes = DateParsers.ddMMyyyy(query.Payload.Birthday);
+                if (birthdayParseRes.IsValid)
+                {
+                    clients = clients
+                        .Where(client => client.Birthday == birthdayParseRes.Value);
+                }
+                var parsedPhone = PhoneFormatters.FromMasked(query.Payload.PhoneNumber);
+
+
+                if (!string.IsNullOrEmpty(query.Payload.FirstName))
+                {
+                    clients = clients
+                        .Where(client => client.FirstName.ToLower() == query.Payload.FirstName.ToLower());
+
+                }
+
+                if (!string.IsNullOrEmpty(query.Payload.LastName))
+                {
+                    clients = clients
+                        .Where(client => client.Surname.ToLower() == query.Payload.LastName.ToLower());
+
+                }
+
+                if (!string.IsNullOrEmpty(query.Payload.FatherName))
+                {
+                    clients = clients
+                        .Where(client => client.FatherName.ToLower() == query.Payload.FatherName.ToLower());
+
+                }
+
+                if (!string.IsNullOrEmpty(query.Payload.ClientIdDocument))
+                {
+                    clients = clients.Include(client => client.ClientDocuments)
+                        .Where(client => client.ClientDocuments
+                        .Count(document => document.Number.ToLower() == query.Payload.ClientIdDocument
+                        && document.ClientDocumentType.Id == ClientDocumentTypesDefault.ClientID) > 0);
+                }
+
+                if (query.Payload.PersonDocumentType != Guid.Empty)
+                {
+                    clients = clients.Include(client => client.ClientDocuments)
+                        .Where(client => client.ClientDocuments
+                        .Count(document => document.ClientDocumentType.Id == query.Payload.PersonDocumentType) > 0);
+                }
+
+                if (!string.IsNullOrEmpty(query.Payload.PersonDocumentSeries))
+                {
+                    clients = clients.Include(client => client.ClientDocuments)
+                        .Where(client => client.ClientDocuments
+                        .Count(document => document.Series.ToLower() == query.Payload.PersonDocumentSeries) > 0);
+                }
+                if (!string.IsNullOrEmpty(query.Payload.PersonDocumentNumber))
+                {
+                    clients = clients.Include(client => client.ClientDocuments)
+                        .Where(client => client.ClientDocuments
+                        .Count(document => document.Number.ToLower() == query.Payload.PersonDocumentNumber) > 0);
+                }
+                var personDocumentDateParseRes = DateParsers.ddMMyyyy(query.Payload.PersonDocumentDate);
+                if (personDocumentDateParseRes.IsValid)
+                {
+                    clients = clients.Include(client => client.ClientDocuments)
+                        .Where(client => client.ClientDocuments
+                        .Count(document => document.IssuedDate == personDocumentDateParseRes.Value) > 0);
+                }
+                if (query.Payload.PhoneCountry != Guid.Empty)
+                {
+                    clients = clients
+                        .Include(client => client.ContactInformation)
+                        .Include(client => client.ContactInformation.Phones)
+                        .Where(client => client.ContactInformation.Phones
+                        .Count(ph => ph.CountryId == query.Payload.PhoneCountry) > 0);
+                }
+
+                if (!string.IsNullOrEmpty(query.Payload.PhoneNumber) && parsedPhone != null)
+                {
+                    //this.phoneRepo.GetAll().Select(ph => ph.)
+                    //clients = clients
+                    //    .Where(client => client.ContactInformation.Phones
+                    //    .Count(ph => ph.PhoneNumber == parsedPhone) > 0);
+                }
+
+
+                if (query.Payload.CoordinatingCenter != Guid.Empty
+                    || query.Payload.CoordinatingCenterType != Guid.Empty)
+                {
+                    //clients = clients
+                    //    .Include(cas => cas.CenterCurrent)
+                    //    .Include(cas => cas.CenterRegistered);
+                }
+
+
+                //////
+                //List<Guid> clientIDsInCenter = this.caseRepo.GetAll()
+                //    .Where(cas => cas.CenterCurrentId == curentCenterId || cas.CenterRegisteredId == curentCenterId)
+                //    .Select(cas => cas.ClientId).ToList();
+                ////
+
+                //List<Guid> centerIds = new List<Guid>();
+                //List<Guid> clientIDsInCenter = new List<Guid>();
+
+                if (query.Payload.CoordinatingCenter != Guid.Empty)
+                {
+                    clients = clients.Include(c => c.Cases);
+                }
+
+                if (query.Payload.CoordinatingCenterType != Guid.Empty || query.Payload.CoatLevel1 != Guid.Empty)
+                {
+                    clients = clients
+                    .Include(c => c.Cases)
+                        .ThenInclude(c => c.CenterRegistered)
+                    .Include(c => c.Cases)
+                        .ThenInclude(c => c.CenterCurrent);
+                }
+
+                if (query.Payload.CoordinatingCenter != Guid.Empty)
+                {                    
+                    //var clientIdsByCenter = this.caseRepo.GetClientIdsByCenterId(query.Payload.CoordinatingCenter)
+                    //    .ToListAsync().Result;
+                    //clientIDsInCenter.AddRange(clientIdsByCenter);
+
+                    //var idsByCenter = this.caseRepo.GetAll()
+                    //    .Where(cas => cas.CenterCurrentId == query.Payload.CoordinatingCenter
+                    //        || cas.CenterRegisteredId == query.Payload.CoordinatingCenter)
+                    //    .Select(cas => cas.ClientId).ToList();
+                    clients = clients.Where(c => c.Cases.Any(cas => cas.CenterRegistered.Id == query.Payload.CoordinatingCenter
+                    || cas.CenterCurrent.Id == query.Payload.CoordinatingCenter));
+
+                }
+
+                if (query.Payload.CoordinatingCenterType != Guid.Empty)
+                {
+
+                    //var centerIdsWithType = this.centerRepo.GetAll()
+                    //   .Where(center => center.CenterTypeId == query.Payload.CoordinatingCenterType)
+                    //   .Select(center => center.Id);
+                    //centerIds.AddRange(centerIdsWithType.ToList());
+                    clients = clients
+                        .Where(c => c.Cases.Any(cas => cas.CenterRegistered.CenterTypeId == query.Payload.CoordinatingCenterType
+                    || cas.CenterCurrent.CenterTypeId == query.Payload.CoordinatingCenterType));
+                }
+
+                if (query.Payload.CoatLevel1 != Guid.Empty)
+                {
+                    //var centerIdsWithRegion = this.centerRepo.GetAll()
+                    //    .Where(center => center.RegionId == query.Payload.CoatLevel1)
+                    //    .Select(center => center.Id);
+                    //centerIds.AddRange(centerIdsWithRegion.ToList());
+
+                    clients = clients.Where(c => c.Cases.Any(cas => cas.CenterRegistered.RegionId == query.Payload.CoatLevel1
+                    || cas.CenterCurrent.RegionId == query.Payload.CoatLevel1));
+                }
+
+                //if (centerIds.Count > 0)
+                //{
+                //    var idsByCenter = this.caseRepo.GetAll()
+                //        .Where(cas => (cas.CenterCurrentId != null && centerIds.Contains(cas.CenterCurrentId.Value)
+                //        || cas.CenterRegisteredId != null && centerIds.Contains(cas.CenterRegisteredId.Value)))
+                //        .Select(cas => cas.ClientId);
+                //    clientIDsInCenter.AddRange(idsByCenter);
+                //}
+
+                //if(clientIDsInCenter.Count > 0)
+                //{
+                //    clientIDsInCenter = clientIDsInCenter.Distinct().ToList();
+                //    this.clients = this.clients.Where(cl => clientIDsInCenter.Contains(cl.Id));
+                //}
+
+            }
+
+        }
+
+
+        public int GetEstimateCount()
+        {
+            int estCount = 0;
+            var c1 = new CMdCommandTest().Init(this.dbContext.Database.GetDbConnection()).Open();
+
+            bool isRandomlyUpdateView = new Random().Next(0, 150) > 140;
+            if (isRandomlyUpdateView)
+            {
+                c1.PerformCmd(CommonCMdFac.UpdateMaterializedView("AllClientsCountView"));
+            }
+
+            c1.PerformCmd(CommonCMdFac.SelectMaterializedView("AllClientsCountView"));
+            c1.GetRecords((val) =>
+            {
+                estCount = (int)val.GetValue(0);
+                c1.isReadStopEvent = true;
+            });
+
+            c1.Close();
+            return estCount;
+        }
+
+        public static int GetEstimateCountExternalPerfTest(Kias3DbContext dbContext)
+        {
+            int estCount = 0;
+            var c1 = new CMdCommandTest().Init(dbContext.Database.GetDbConnection()).Open();
+
+            bool isRandomlyUpdateView = new Random().Next(0, 150) > 140;
+            if (isRandomlyUpdateView)
+            {
+                c1.PerformCmd(CommonCMdFac.UpdateMaterializedView("AllClientsCountView"));
+            }
+
+            c1.PerformCmd(CommonCMdFac.SelectMaterializedView("AllClientsCountView"));
+            c1.GetRecords((val) =>
+            {
+                estCount = (int)val.GetValue(0);
+                c1.isReadStopEvent = true;
+            });
+
+            c1.Close();
+            return estCount;
+        }
+
+        public PaginatedTableLoaderResult GetImmediateResult(IUrlHelper Url)
+        {
+            List<ClientTableRowViewModel> clientList = new List<ClientTableRowViewModel>();
+
+            this.Work();
+
+            var selectedClients = clients.ToList();
+
+            foreach (var client in selectedClients)
+            {
+
+                var clientIdDocument = this.clientIdDocuments.FirstOrDefault(d => d.ClientId == client.Id);
+                var defaultIdDoc = this.clientActiveDocuments.FirstOrDefault(d => d.ClientId == client.Id);
+                var phoneNumber = this.phones.FirstOrDefault(phon => phon.ContactInfoId == client.ContactInformationId);
+
+                clientList.Add(new ClientTableRowViewModel()
+                {
+                    //ClientIdDocument = this.dbHelperService.GetClientIdDocument(client),
+                    //PhoneNumber = this.dbHelperService.GetClientPhone(client),
+                    //DefaultIdDoc = this.dbHelperService.GetClientDocument(client),
+
+                    BirthdayStr = client.Birthday.ToInvariantString(DateFormats.ddmmyyyy),
+                    FullName = client.FullName,
+                    ClientIdDocument = clientIdDocument?.Number,
+                    DefaultIdDoc = defaultIdDoc?.Number,
+                    PhoneNumber = phoneNumber?.Number,
+                    Id = client.Id,
+                    Links = new ClientTableRowLinks()
+                    {
+                        Cases = Url.Action("ClientCases", "Case", new { clientId = client.Id }),
+                        Card = Url.Action("ClientCard", "ClientCard", new { clientId = client.Id }),
+                        CasesCount = this.dbHelperService.GetCasesCount(client.Id).ToString()
+                    },
+                    DetailsLink = Url.Action("GetClientTableDetailsPartial", "ClientCard", new { clientId = client.Id })
+                });
+            }
+
+
+
+            this.clientIds.Clear();
+
+            int totalPages = count / query.RecordsOnPage;
+            if (count % query.RecordsOnPage > 0)
+            {
+                totalPages++;
+            }
+            bool isFinished = true;
+            //if(isFinished)
+            return new PaginatedTableLoaderResult()
+            {
+                Id = this.id,
+                ImmediateResult = new PaginatedTableResult()
+                {
+                    Success = true,
+                    Sort = query.Sort,
+                    Page = query.IsNewSearch ? 0 : query.Page,
+                    Query = query.Q,
+                    TotalPages = totalPages,
+                    Rows = clientList,
+                },
+                State = new PaginatedTableLoaderResultState()
+                {
+                    IsFinished = isFinished,
+                    Id = this.id
+                }
+            };
+        }
+
+        #region IDisposable Support
+
+        //protected virtual void Dispose(bool disposing)
+        //{
+        //    if (!disposedValue)
+        //    {
+        //        if (disposing)
+        //        {
+        //            this.dbContext.Dispose();
+        //            this.clientRepo.Dispose();
+        //            this.caseRepo.Dispose();
+        //            this.caseStateRepo.Dispose();
+        //            this.employeeRepo.Dispose();
+        //            this.freeAidRepo.Dispose();
+        //            this.lawyerRepo.Dispose();
+        //            // TODO: dispose managed state (managed objects).
+        //        }
+
+        //        // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+        //        // TODO: set large fields to null.
+
+        //        this.httpContext = null;
+        //        this.query = null;
+        //        //this.caseStateList = null;
+        //        //this.employeeList = null;
+
+        //        disposedValue = true;
+        //    }
+        //}
+
+        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+        // ~CasePaginatedTableLoaderService() {
+        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+        //   Dispose(false);
+        // }
+
+        // This code added to correctly implement the disposable pattern.
+        //public void Dispose()
+        //{
+        //    // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+        //    Dispose(true);
+        //    // TODO: uncomment the following line if the finalizer is overridden above.
+        //    // GC.SuppressFinalize(this);
+        //}
+        #endregion
+
+        //string AbsoluteAction(
+        //    this IUrlHelper url,
+        //    string actionName,
+        //    string controllerName,
+        //    object routeValues = null)
+        //{
+        //    string scheme = HttpContextAccessor.HttpContext.Request.Scheme;
+        //    return url.Action(actionName, controllerName, routeValues, scheme);
+        //}
+
+    }
+
+
+    public class CMdCommandTest
+    {
+        private DbConnection connection;
+        private DbDataReader reader;
+        public bool isReadStopEvent;
+
+        public CMdCommandTest Init(DbConnection connection)
+        {
+            this.connection = connection;
+            return this;
+        }
+        public CMdCommandTest Open()
+        {
+            connection.Open();
+            return this;
+        }
+        public void PerformCmd(string cmd)
+        {
+            if (this.reader != null && !this.reader.IsClosed)
+            {
+                this.reader.Close();
+                this.reader = null;
+            }
+
+            if (this.connection.State == ConnectionState.Closed)
+            {
+                this.connection.OpenAsync();
+            }
+
+            var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            this.reader = command.ExecuteReader();
+        }
+
+        public void GetRecords(Action<IDataRecord> callback)
+        {
+            this.isReadStopEvent = false;
+            while (this.reader.Read() && this.isReadStopEvent == false)
+            {
+                callback(this.reader);
+            }
+            this.isReadStopEvent = false;
+        }
+
+        public void Close()
+        {
+            if (!this.reader.IsClosed)
+            {
+                this.reader.Close();
+            }
+            this.connection.Close();
+        }
+    }
+
+
+    public class CommonCMdFac
+    {
+        //AllCasesRegisteredCountView
+        //AllClientsCountView
+        public static string SelectMaterializedView(string viewName)
+        {
+            return $"SELECT * FROM \"{viewName}\"";
+        }
+
+
+        public static string UpdateMaterializedView(string viewName)
+        {
+            return $"REFRESH MATERIALIZED VIEW \"{viewName}\"";
+        }
+
+        public static string ClientsIdByNameILike(string queryNormalized)
+        {
+            return $"select client.\"Id\" FROM \"Clients\" AS client WHERE client.\"FirstName\" ILIKE \'%{queryNormalized}%\' OR client.\"Surname\" ILIKE \'%{queryNormalized}%\' OR client.\"FatherName\" ILIKE \'%{queryNormalized}%\';";
+        }
+        public static string ClientsIdByNameFullMatch(string queryNormalized)
+        {
+            return $"select client.\"Id\" FROM \"Clients\" AS client where lower(client.\"FirstName\") = '{queryNormalized}' or lower(client.\"Surname\") = '{queryNormalized}' or lower(client.\"FatherName\") = '{queryNormalized}';";
+        }
+
+
+        // ---------------------------------------------------------------------
+
+        public static string GetIds(string table, Guid parentId, string field, bool isFialdId = false)
+        {
+            if (isFialdId)
+            {
+                var res = $"SELECT \"{field}\" FROM \"{table}\" WHERE \"Id\" = \'{parentId}\'";
+                return res;
+            }
+
+            return  $"SELECT * FROM \"{table}\" WHERE \"{field}Id\" = \'{parentId}\'";
+        }
+
+    }
+
+}

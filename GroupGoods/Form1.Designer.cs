@@ -29,18 +29,19 @@
         private void InitializeComponent()
         {
             this.panel1 = new System.Windows.Forms.Panel();
-            this.Group = new System.Windows.Forms.CheckBox();
+            this.dataGridViewGoods = new System.Windows.Forms.DataGridView();
+            this.chekBoxManager = new System.Windows.Forms.CheckBox();
             this.checkBoxCountry = new System.Windows.Forms.CheckBox();
             this.checkBoxCity = new System.Windows.Forms.CheckBox();
             this.checkBoxOrganisation = new System.Windows.Forms.CheckBox();
             this.checkBoxDate = new System.Windows.Forms.CheckBox();
             this.buttonShowAll = new System.Windows.Forms.Button();
             this.buttonGroup = new System.Windows.Forms.Button();
-            this.dataGridViewGoods = new System.Windows.Forms.DataGridView();
             this.Data = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Organisation = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.City = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Manager = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Country = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Qty = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Price = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.panel1.SuspendLayout();
@@ -51,30 +52,46 @@
             // 
             this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
             this.panel1.Controls.Add(this.dataGridViewGoods);
-            this.panel1.Controls.Add(this.Group);
+            this.panel1.Controls.Add(this.chekBoxManager);
             this.panel1.Controls.Add(this.checkBoxCountry);
             this.panel1.Controls.Add(this.checkBoxCity);
             this.panel1.Controls.Add(this.checkBoxOrganisation);
             this.panel1.Controls.Add(this.checkBoxDate);
-            this.panel1.Location = new System.Drawing.Point(53, 29);
+            this.panel1.Location = new System.Drawing.Point(12, 29);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(699, 280);
+            this.panel1.Size = new System.Drawing.Size(776, 280);
             this.panel1.TabIndex = 3;
             // 
-            // Group
+            // dataGridViewGoods
             // 
-            this.Group.AutoSize = true;
-            this.Group.Location = new System.Drawing.Point(465, 32);
-            this.Group.Name = "Group";
-            this.Group.Size = new System.Drawing.Size(55, 17);
-            this.Group.TabIndex = 5;
-            this.Group.Text = "Group";
-            this.Group.UseVisualStyleBackColor = true;
+            this.dataGridViewGoods.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dataGridViewGoods.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.Data,
+            this.Organisation,
+            this.City,
+            this.Manager,
+            this.Country,
+            this.Qty,
+            this.Price});
+            this.dataGridViewGoods.Location = new System.Drawing.Point(28, 55);
+            this.dataGridViewGoods.Name = "dataGridViewGoods";
+            this.dataGridViewGoods.Size = new System.Drawing.Size(741, 201);
+            this.dataGridViewGoods.TabIndex = 6;
+            // 
+            // chekBoxManager
+            // 
+            this.chekBoxManager.AutoSize = true;
+            this.chekBoxManager.Location = new System.Drawing.Point(474, 32);
+            this.chekBoxManager.Name = "chekBoxManager";
+            this.chekBoxManager.Size = new System.Drawing.Size(55, 17);
+            this.chekBoxManager.TabIndex = 5;
+            this.chekBoxManager.Text = "Group";
+            this.chekBoxManager.UseVisualStyleBackColor = true;
             // 
             // checkBoxCountry
             // 
             this.checkBoxCountry.AutoSize = true;
-            this.checkBoxCountry.Location = new System.Drawing.Point(371, 32);
+            this.checkBoxCountry.Location = new System.Drawing.Point(372, 32);
             this.checkBoxCountry.Name = "checkBoxCountry";
             this.checkBoxCountry.Size = new System.Drawing.Size(55, 17);
             this.checkBoxCountry.TabIndex = 4;
@@ -84,7 +101,7 @@
             // checkBoxCity
             // 
             this.checkBoxCity.AutoSize = true;
-            this.checkBoxCity.Location = new System.Drawing.Point(268, 32);
+            this.checkBoxCity.Location = new System.Drawing.Point(273, 32);
             this.checkBoxCity.Name = "checkBoxCity";
             this.checkBoxCity.Size = new System.Drawing.Size(55, 17);
             this.checkBoxCity.TabIndex = 3;
@@ -134,21 +151,6 @@
             this.buttonGroup.UseVisualStyleBackColor = true;
             this.buttonGroup.Click += new System.EventHandler(this.buttonGroup_Click);
             // 
-            // dataGridViewGoods
-            // 
-            this.dataGridViewGoods.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dataGridViewGoods.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.Data,
-            this.Organisation,
-            this.City,
-            this.Manager,
-            this.Qty,
-            this.Price});
-            this.dataGridViewGoods.Location = new System.Drawing.Point(28, 55);
-            this.dataGridViewGoods.Name = "dataGridViewGoods";
-            this.dataGridViewGoods.Size = new System.Drawing.Size(647, 201);
-            this.dataGridViewGoods.TabIndex = 6;
-            // 
             // Data
             // 
             this.Data.HeaderText = "Дата";
@@ -168,6 +170,11 @@
             // 
             this.Manager.HeaderText = "Менеджер";
             this.Manager.Name = "Manager";
+            // 
+            // Country
+            // 
+            this.Country.HeaderText = "Країна";
+            this.Country.Name = "Country";
             // 
             // Qty
             // 
@@ -199,7 +206,7 @@
         #endregion
 
         private System.Windows.Forms.Panel panel1;
-        private System.Windows.Forms.CheckBox Group;
+        private System.Windows.Forms.CheckBox chekBoxManager;
         private System.Windows.Forms.CheckBox checkBoxCountry;
         private System.Windows.Forms.CheckBox checkBoxCity;
         private System.Windows.Forms.CheckBox checkBoxOrganisation;
@@ -211,6 +218,7 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn Organisation;
         private System.Windows.Forms.DataGridViewTextBoxColumn City;
         private System.Windows.Forms.DataGridViewTextBoxColumn Manager;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Country;
         private System.Windows.Forms.DataGridViewTextBoxColumn Qty;
         private System.Windows.Forms.DataGridViewTextBoxColumn Price;
     }

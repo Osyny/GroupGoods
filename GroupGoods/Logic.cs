@@ -30,6 +30,13 @@ namespace GroupGoods
             var res = serverLogic.GetGoods();
             return res;
         }
+
+        public List<ShipmentGoods> selectData(Dictionary<int, string> group)
+        {
+            var res = serverLogic.SelectData(group);
+
+            return res;
+        }
         public List<ShipmentGoods> groupData()
         {
             var res = serverLogic.groupData();

@@ -1,0 +1,76 @@
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Kias3Database;
+using Kias3Web.Services;
+using Microsoft.EntityFrameworkCore;
+
+namespace Kias3Web.Controllers.Audit
+{
+    public class SqlReqest
+    {
+        public Kias3DbContext dbContext { get; set; }
+        public SqlReqest(Kias3DbContext dbContext)
+        {
+            //this.query = query;
+            this.dbContext = dbContext;
+        }
+
+        public List<Guid> GetReq(string table, Guid parentId, string field, bool isFialdId)
+        {
+            
+            var resIds = new List<Guid>();
+
+            var c1 = new CMdCommandTest().Init(this.dbContext.Database.GetDbConnection()).Open();
+
+            c1.PerformCmd(CommonCMdFac.GetIds(table, parentId, field, isFialdId));
+
+           // c1.GetRecords((val) => resIds.Add((Guid)val.GetValue(0)));
+            c1.GetRecords((val) => this.FillIdFromSql(val, resIds));
+
+            //c1.PerformCmd(CommonCMdFac.ClientsIdByNameILike(queryNormalized));
+            //c1.GetRecords((val) => clientIDs.Add((Guid)val.GetValue(0)));
+
+            //c1.PerformCmd(CommonCMdFac.ClientsIdByNameFullMatch(queryNormalized));
+            //c1.GetRecords((val) => clientIDs.Add((Guid)val.GetValue(0)));
+
+            c1.Close();
+            return resIds;
+        }
+
+        public List<Guid> GetReqest(string query)
+        {
+
+            var resIds = new List<Guid>();
+
+            var c1 = new CMdCommandTest().Init(this.dbContext.Database.GetDbConnection()).Open();
+
+            c1.PerformCmd(query);
+
+            // c1.GetRecords((val) => resIds.Add((Guid)val.GetValue(0)));
+            c1.GetRecords((val) => this.FillIdFromSql(val, resIds));
+
+            //c1.PerformCmd(CommonCMdFac.ClientsIdByNameILike(queryNormalized));
+            //c1.GetRecords((val) => clientIDs.Add((Guid)val.GetValue(0)));
+
+            //c1.PerformCmd(CommonCMdFac.ClientsIdByNameFullMatch(queryNormalized));
+            //c1.GetRecords((val) => clientIDs.Add((Guid)val.GetValue(0)));
+
+            c1.Close();
+            return resIds;
+        }
+
+        private void FillIdFromSql(System.Data.IDataRecord val, List<Guid> resIds)
+        {
+            if (val.IsDBNull(0))
+            {
+                return;
+            }
+
+            resIds.Add((Guid) val.GetValue(0));
+        }
+    }
+}
