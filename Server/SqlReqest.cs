@@ -14,31 +14,32 @@ namespace Server
         {
             this.db = db;
         }
-        public List<ShipmentGoods> GetReq(string selectStr, string groupStr)
+        public List<ShipmentGoods> GetReq(string selectStr)
         {
 
             var res = new List<ShipmentGoods>();
 
             var c1 = new CMdCommandTest().Init(this.db.Database.Connection).Open();
 
-            c1.PerformCmd(CommonCMdFac.GetGroup(selectStr, groupStr));
+            c1.PerformCmd(CommonCMdFac.GetGroup(selectStr));
 
             c1.GetRecords((val) => this.FillFromSql(val, res));
-
+        
+          
             c1.Close();
             return res;
 
         }
 
-        private void FillFromSql(System.Data.IDataRecord val, List<ShipmentGoods> res)
+        private void FillFromSql(System.Data.IDataRecord val, List<ShipmentGoods> res1)
         {
             if (val.IsDBNull(0))
             {
                 return;
             }
-           
+            List<List<string>> res = new List<List<string>>();
 
-           res.Add((ShipmentGoods)val.GetValue(0));
+           // var t = val.GetValue();
         }
     }
 }

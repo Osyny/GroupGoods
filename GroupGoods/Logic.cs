@@ -34,6 +34,7 @@ namespace GroupGoods
         public List<ShipmentGoods> selectData(Dictionary<int, string> group)
         {
             var res = serverLogic.SelectData(group);
+          //  var res = serverLogic.selectData(group);
 
             return res;
         }

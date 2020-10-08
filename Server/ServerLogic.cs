@@ -72,8 +72,8 @@ namespace Server
                 {
                     if (f.Key == (int)filds.date)
                     {
-                      var  resData = db.ShipmentGoods.GroupBy(g => g.date).ToList();
-                        foreach(var groupDate in resData)
+                        var resData = db.ShipmentGoods.GroupBy(g => g.date).ToList();
+                        foreach (var groupDate in resData)
                         {
                             var dateVm = new ShipmentGoods()
                             {
@@ -83,7 +83,7 @@ namespace Server
                             };
                             goodsVm.Add(dateVm);
                         }
-                        
+
                     }
 
                     if (f.Key == (int)filds.organization)
@@ -143,20 +143,10 @@ namespace Server
                         }
                     }
 
-             
+
                 }
 
                 var t = goodsVm;
-
-                //foreach(var vm in goodsVm)
-                //{
-                //    var date = vm.date;
-                //    var y = new ShipmentGoods();
-                //    if (vm.date.HasValue)
-                //        y.date = vm.date;
-                //    if (!string.IsNullOrEmpty(vm.organization))
-                //        y.date = vm.date;
-                //}
 
             }
             else
@@ -170,39 +160,42 @@ namespace Server
 
         }
 
-        //public List<ShipmentGoods> selectData(List<string> groupFields/*, List<string> actualGroup*/)
-        //{
-        //    List<ShipmentGoods> goodsVm = new List<ShipmentGoods>();
+        public List<ShipmentGoods> selectData(Dictionary<int, string> groupDict/*List<string> groupFields*/)
+        {
+            List<ShipmentGoods> goodsVm = new List<ShipmentGoods>();
 
-        //    // var res = db.ShipmentGoods.GroupBy(g => g.date).ToList();
-        //    string selectString = "Select";
-        //    string fromString = "FROM ShipmentGoods";
-        //    string groupString = "";
-        //    int i = 0;
+             var groupFields = groupDict.Select(g => g.Value).ToList();
 
-        //    if (groupFields.Count > 0)
-        //    {
-        //        groupString += "GROUP BY ";
+            string selectString = "Select ";
+            string fromString = "FROM ShipmentGoods";
+            string groupString = "";
+            int i = 0;
 
-        //        for (i = 0; i < groupFields.Count - 1; i++)
-        //        {
-        //            selectString += groupFields[i] + ", ";
-        //            groupString += groupFields[i] + ", ";
-        //        }
-        //        selectString += groupFields[i];
-        //        groupString += groupFields[i];
+            if (groupFields.Count > 0)
+            {
+                groupString += "GROUP BY ";
 
-        //        selectString += ", SUM(qty), SUM(price)";
-        //    }
-        //    else
-        //    {
-        //        selectString += "date, organization, cityName, countryName, managerName, qty, price";
-        //    }
-        //    var selectStr = selectString + " " + fromString + " " + groupString;
-        //    var groupStr = groupString;
-        //   // sqlReqest.GetReq(selectStr, groupStr);
-        //    return goodsVm;
-        //}
+                for (i = 0; i < groupFields.Count - 1; i++)
+                {
+                    selectString += groupFields[i] + ", ";
+                    groupString += groupFields[i] + ", ";
+                }
+                selectString += groupFields[i];
+                groupString += groupFields[i];
+
+                selectString += ", SUM(qty), SUM(price)";
+            }
+            else
+            {
+                selectString += "date, organization, cityName, countryName, managerName, qty, price";
+            }
+            var selectStr = selectString + " " + fromString + " " + groupString;
+            var groupStr = groupString;
+
+            goodsVm = sqlReqest.GetReq(selectStr);
+
+            return goodsVm;
+        }
 
 
     }

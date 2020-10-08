@@ -88,7 +88,7 @@ namespace GroupGoods
             }
 
             selectGoods = logic.selectData(groupFields);
-           updateGoods();
+            updateGoods();
         }
 
 

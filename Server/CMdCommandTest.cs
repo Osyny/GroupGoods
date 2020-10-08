@@ -88,27 +88,32 @@ namespace Server
             return $"select client.\"Id\" FROM \"Clients\" AS client where lower(client.\"FirstName\") = '{queryNormalized}' or lower(client.\"Surname\") = '{queryNormalized}' or lower(client.\"FatherName\") = '{queryNormalized}';";
         }
 
+        public static string GetIds(bool isFialdId, string field, string table, Guid parentId)
+        {
+            if (isFialdId)
+            {
+                var res = $"SELECT \"{field}\" FROM \"{table}\" WHERE \"Id\" = \'{parentId}\'";
+                return res;
+            }
+            var res2 = $"SELECT * FROM \"{table}\" WHERE \"{field}Id\" = \'{parentId}\'";
+            return res2;
+        }
 
         // ---------------------------------------------------------------------
 
-        public static string GetGroup(string selectStr, string groupStr)
+        public static string GetGroup(string selectStr)
         {
-            //if (isFialdId)
-            //{
-            //    var res = $"SELECT \"{field}\" FROM \"{table}\" WHERE \"Id\" = \'{parentId}\'";
-            //    return res;
-            //}
+
             var lisrSelect = selectStr.Split(',');
             var select = string.Join("\", ", lisrSelect);
-            var lisrGroup = groupStr.Split(',');
-            var group = string.Join("\", ", lisrGroup);
+           // var lisrGroup = groupStr.Split(',');
+          //  var group = string.Join("\", ", lisrGroup);
 
-       
-            var res = $"SELECT \"{select}, " +
-                      $"FROM ShipmentGoods GROUP BY \"{group}";
 
-            return res;// $"SELECT * FROM \"{table}\" WHERE \"{field}Id\" = \'{parentId}\'";
+            var res = $"{selectStr}";
+
+            return res;
+
         }
-
     }
 }
