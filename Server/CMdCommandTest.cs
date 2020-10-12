@@ -52,6 +52,36 @@ namespace Server
             }
             this.isReadStopEvent = false;
         }
+        public void GetRecords_1(List<string> actualFields)
+        {
+            this.isReadStopEvent = false;
+            int i;
+            while (this.reader.Read() && this.isReadStopEvent == false)
+            {
+                //callback(this.reader);
+                var t = new ShipmentGoods();
+                var y = this.reader.FieldCount;
+
+                object a = reader.GetValue(0);
+                object b = reader.GetValue(1);
+                object c = reader.GetValue(2);
+                object d = reader.GetValue(3);
+                object v = reader.GetValue(2);
+
+                //ShipmentGoods shipment = new ShipmentGoods();
+                //i = 0;
+                //foreach (string actualField in actualFields)
+                //{
+                //    shipment[actualField] = reader[i].ToString();
+                //    i++;
+                //}
+                //shipment["Qty"] = int.Parse(reader[i].ToString());
+                //shipment["Price"] = decimal.Parse(reader[i + 1].ToString());
+                //listData.Add(shipment);
+
+            }
+            this.isReadStopEvent = false;
+        }
 
         public void Close()
         {

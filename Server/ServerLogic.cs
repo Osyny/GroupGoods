@@ -160,7 +160,7 @@ namespace Server
 
         }
 
-        public List<ShipmentGoods> selectData(Dictionary<int, string> groupDict/*List<string> groupFields*/)
+        public List<ShipmentGoods> selectData(Dictionary<int, string> groupDict, List<string> actualFields)
         {
             List<ShipmentGoods> goodsVm = new List<ShipmentGoods>();
 
@@ -192,7 +192,7 @@ namespace Server
             var selectStr = selectString + " " + fromString + " " + groupString;
             var groupStr = groupString;
 
-            goodsVm = sqlReqest.GetReq(selectStr);
+            goodsVm = sqlReqest.GetReq(selectStr, actualFields);
 
             return goodsVm;
         }

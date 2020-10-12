@@ -14,7 +14,7 @@ namespace Server
         {
             this.db = db;
         }
-        public List<ShipmentGoods> GetReq(string selectStr)
+        public List<ShipmentGoods> GetReq(string selectStr, List<string> actualFields)
         {
 
             var res = new List<ShipmentGoods>();
@@ -23,8 +23,8 @@ namespace Server
 
             c1.PerformCmd(CommonCMdFac.GetGroup(selectStr));
 
-            c1.GetRecords((val) => this.FillFromSql(val, res));
-        
+            //   c1.GetRecords((val) => this.FillFromSql(val, res));
+            c1.GetRecords_1();
           
             c1.Close();
             return res;

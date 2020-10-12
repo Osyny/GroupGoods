@@ -56,29 +56,34 @@ namespace GroupGoods
         private void showGroup()
         {
             Dictionary<int, string> groupFields = new Dictionary<int, string>();
-           // List<string> actualFields = new List<string>();
+            List<string> actualFields = new List<string>();
 
             if (checkBoxDate.Checked)
             {
                 groupFields.Add(0, "date");
+                actualFields.Add("Date");
                
             }
             if (checkBoxOrganisation.Checked)
             {
                 groupFields.Add(1, "organization");
-               
+                actualFields.Add("Organization");
+
             }
             if (checkBoxCity.Checked)
             {
-                groupFields.Add(2, "cityName");              
+                groupFields.Add(2, "cityName");
+                actualFields.Add("CityName");
             }
             if (chekBoxManager.Checked)
             {
-                groupFields.Add(3, "managerName");              
+                groupFields.Add(3, "managerName");
+                actualFields.Add("ManagerName");
             }
             if (checkBoxCountry.Checked)
             {
                 groupFields.Add(4, "countryName");
+                actualFields.Add("CountryName");
             }
 
             if (groupFields.Count == 0)
